@@ -1,4 +1,4 @@
-/** Original prototype recipes and synthetic products; no third-party catalogue data. */
+/** Original normalized recipes. References and adaptation notes are recorded in sources.ts. */
 export type Ingredient = { id: string; name: string; unit: 'g' | 'ml' | '个'; category: '生鲜' | '调味'; icon: string };
 export type Requirement = { id: string; amount: number };
 export type RecipeStep = { title: string; detail: string; minutes: number; passive?: boolean; burner?: boolean; equipment?: '汤锅' | '炖锅' | '炒锅' };
@@ -28,11 +28,9 @@ export const RECIPES: Recipe[] = [
  {id:'mushroom-chicken',name:'香菇滑鸡',aliases:['香菇滑鸡','香菇炖鸡','香菇鸡'],tag:'鲜香下饭',intro:'香菇和鸡腿肉，一锅鲜香。',image:'chicken',color:'#e8e0cd',ingredients:[{id:'chicken',amount:400},{id:'mushroom',amount:200},{id:'ginger',amount:10},{id:'soy',amount:20},{id:'wine',amount:10},{id:'oil',amount:15},{id:'starch',amount:10},{id:'salt',amount:2}],steps:[{title:'翻炒鸡肉与香菇',detail:'鸡腿肉切块，用生抽、料酒和淀粉拌匀。炒锅热油，加姜、鸡肉翻炒，再加洗净切块的香菇。',minutes:8,burner:true,equipment:'炒锅'},{title:'焖熟鸡肉',detail:'加适量热水，盖盖小火焖煮，中途查看水量。',minutes:18,passive:true,burner:true,equipment:'炒锅'},{title:'检查鸡肉并收汁',detail:'检查最厚处鸡肉充分熟透后，加盐、开盖收汁；未熟则补水继续煮，关火装盘。',minutes:4,burner:true,equipment:'炒锅'}],tips:['鸡肉块尽量切成相近大小。']},
  {id:'tofu',name:'家常豆腐',aliases:['家常豆腐','红烧豆腐'],tag:'温柔下饭',intro:'豆腐吸足酱汁，简单也有好滋味。',image:'tofu',color:'#eee4d0',ingredients:[{id:'tofu',amount:400},{id:'garlic',amount:10},{id:'scallion',amount:5},{id:'soy',amount:15},{id:'darksoy',amount:5},{id:'oil',amount:12},{id:'salt',amount:2},{id:'starch',amount:5}],steps:[{title:'煮一锅家常豆腐',detail:'豆腐切块。炒锅热油，下蒜末炒香，加入豆腐、生抽、老抽与少量热水，小火煮至充分加热。',minutes:8,burner:true,equipment:'炒锅'},{title:'薄芡收汁',detail:'淀粉用少量冷水调匀，缓慢淋入锅内，轻推豆腐。煮开后加盐、撒葱花，关火装盘。',minutes:3,burner:true,equipment:'炒锅'}],tips:['轻推豆腐，尽量保持完整。']}
 ];
-export type ProviderId = 'dingdong' | 'hema';
-export const PROVIDERS = [{id:'dingdong' as const,name:'叮咚买菜',short:'叮咚',color:'#208963',delivery:300,freeAt:9900,packaging:100},{id:'hema' as const,name:'盒马鲜生',short:'盒马',color:'#2486a6',delivery:600,freeAt:9900,packaging:0}];
-export type Product = {sku:string; ingredientId:string; title:string; amount:number; price:number; stock:number};
-// Prices are integer fen. These are synthetic fixtures, not current platform offers.
-const PACKS: Record<string, [number,number][]> = {
+export type ReferencePack = {id:string; ingredientId:string; amount:number; referencePrice:number};
+/** Internal planning assumptions only: no store, stock, delivery or checkout capability. */
+const REFERENCE_PACKS: Record<string,[number,number][]> = {
  pork:[[400,2680],[700,4490]],ribs:[[400,2490],[700,4190]],yam:[[350,890],[600,1390]],tomato:[[500,690],[1000,1190]],egg:[[6,890],[10,1390]],ginger:[[150,390]],scallion:[[100,250]],garlic:[[200,490]],broccoli:[[500,890]],potato:[[500,490],[1000,790]],cucumber:[[500,590]],tofu:[[400,390]],mushroom:[[200,790]],chicken:[[400,1890],[700,3190]],salt:[[400,290]],oil:[[900,1290]],soy:[[500,990]],darksoy:[[500,1090]],sugar:[[400,490]],wine:[[500,690]],vinegar:[[500,790]],starch:[[250,490]]
 };
-export function catalogue(provider:ProviderId):Product[]{return Object.entries(PACKS).flatMap(([id,packs])=>packs.map(([amount,price],i)=>({sku:`demo-${provider}-${id}-${i}`,ingredientId:id,title:`${INGREDIENTS[id].name} · ${i?'家庭装':'日常装'}`,amount,price:provider==='hema'? Math.round((price * (['tomato','egg','broccoli','yam'].includes(id)?0.92:1.06))/10)*10:price,stock:20})));}
+export const referencePacks:ReferencePack[]=Object.entries(REFERENCE_PACKS).flatMap(([ingredientId,packs])=>packs.map(([amount,referencePrice],i)=>({id:`reference-${ingredientId}-${i}`,ingredientId,amount,referencePrice})));
