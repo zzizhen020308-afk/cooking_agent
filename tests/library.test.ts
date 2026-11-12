@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
-import {RECIPES,INGREDIENTS,DEFAULT_PANTRY,referencePacks,findRecipes,equipmentFor} from '../lib/kitchen/catalog.ts';
+import {DISHES,RECIPES,INGREDIENTS,DEFAULT_PANTRY,referencePacks,findRecipes,equipmentFor} from '../lib/kitchen/catalog.ts';
 import {LIBRARY_RECIPES,SOURCE_SNAPSHOT} from '../lib/kitchen/library.ts';
 import {RECIPE_SOURCES} from '../lib/kitchen/sources.ts';
 import {createPlan,parseRequest,availableTasks,remainingSeconds,extendTimer,type TaskProgress} from '../lib/kitchen/engine.ts';
@@ -9,9 +9,9 @@ import {answerCookingQuestion} from '../lib/kitchen/advisor.ts';
 const fixed=1800000000000;
 const input={servings:2,budget:10000,pantry:DEFAULT_PANTRY};
 
-test('all 34 recipes and every alias round-trip without matching another dish',()=>{
- assert.equal(RECIPES.length,34);assert.equal(new Set(RECIPES.map(r=>r.id)).size,34);
- for(const r of RECIPES)for(const alias of r.aliases)assert.deepEqual(parseRequest(alias),[r.id],alias);
+test('all 34 dishes and every recipe alias round-trip to the canonical dish',()=>{
+ assert.equal(DISHES.length,34);assert.equal(RECIPES.length,41);assert.equal(new Set(RECIPES.map(r=>r.id)).size,41);
+ for(const r of RECIPES)for(const alias of r.aliases)assert.deepEqual(parseRequest(alias),[r.dishId],alias);
  assert.deepEqual(parseRequest('我今天想做宫爆鸡丁、蒸鲈鱼和紫菜鸡蛋汤，3人份，预算100元'),['kung-pao-chicken','steamed-fish','seaweed-egg-soup']);
  assert.deepEqual(parseRequest('不要宫保鸡丁，做可乐鸡翅、番茄蛋汤'),['cola-wings','tomato-egg-soup']);
  assert.throws(()=>parseRequest('宫保鸡丁、惠灵顿牛排'),/暂未收录/);

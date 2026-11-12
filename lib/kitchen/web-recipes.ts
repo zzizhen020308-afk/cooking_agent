@@ -1,4 +1,4 @@
-import type {Recipe} from './catalog.ts';
+import type {RecipeDefinition as Recipe} from './catalog.ts';
 
 /** Independently worded, measured planning versions; no third-party photos or recipe text are republished. */
 export const WEB_RECIPES:Recipe[]=[

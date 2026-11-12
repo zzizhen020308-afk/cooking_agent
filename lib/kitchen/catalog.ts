@@ -1,3 +1,4 @@
+import {DEFAULT_VARIANT_NAMES,VARIANT_RECIPES} from './variants.ts';
 import {LIBRARY_RECIPES} from './library.ts';
 import {WEB_RECIPES} from './web-recipes.ts';
 /** Two-person edited recipes. References and adaptation notes are recorded in sources.ts. */
@@ -6,14 +7,16 @@ export type Requirement = { id: string; amount: number };
 export type RecipeStep = { title: string; detail: string; minutes: number; passive?: boolean; waitKind?:'炖煮'|'蒸制'|'泡发'|'腌制'; burner?: boolean; equipment?: '汤锅' | '炖锅' | '炒锅' | '蒸锅' };
 export const RECIPE_CATEGORIES=['荤菜','水产','蔬菜','蛋豆','汤羹','主食','凉菜'] as const;
 export type RecipeCategory=typeof RECIPE_CATEGORIES[number];
-export type Recipe = { id: string; name: string; aliases: string[]; category:RecipeCategory; tag: string; intro: string; image: string; color: string; ingredients: Requirement[]; steps: RecipeStep[]; tips: string[]; };
+export type RecipeDefinition = { id: string; name: string; aliases: string[]; category:RecipeCategory; tag: string; intro: string; image: string; color: string; ingredients: Requirement[]; steps: RecipeStep[]; tips: string[]; };
 export const INGREDIENTS: Record<string, Ingredient> = Object.fromEntries([
   ['pork','五花肉','g','生鲜','🥩'], ['ribs','排骨','g','生鲜','🥩'], ['yam','山药','g','生鲜','🍠'], ['tomato','番茄','g','生鲜','🍅'], ['egg','鸡蛋','个','生鲜','🥚'], ['ginger','生姜','g','生鲜','🫚'], ['scallion','小葱','g','生鲜','🌱'], ['garlic','大蒜','g','生鲜','🧄'], ['broccoli','西兰花','g','生鲜','🥦'], ['potato','土豆','g','生鲜','🥔'], ['cucumber','黄瓜','g','生鲜','🥒'], ['tofu','嫩豆腐','g','生鲜','◻'], ['mushroom','香菇','g','生鲜','🍄'], ['chicken','鸡腿肉','g','生鲜','🍗'], ['salt','盐','g','调味','◦'], ['oil','食用油','ml','调味','◦'], ['soy','生抽','ml','调味','◦'], ['darksoy','老抽','ml','调味','◦'], ['sugar','白糖','g','调味','◦'], ['wine','料酒','ml','调味','◦'], ['vinegar','米醋','ml','调味','◦'], ['starch','淀粉','g','调味','◦'],
   ['wings','鸡翅中','g','生鲜','🍗'],['beef','牛腩','g','生鲜','🥩'],['lean-pork','猪瘦肉','g','生鲜','🥩'],['mince-pork','猪肉末','g','生鲜','🥩'],['pepper','青椒','g','生鲜','🫑'],['eggplant','茄子','g','生鲜','🍆'],['cabbage','包菜','g','生鲜','🥬'],['lettuce','生菜','g','生鲜','🥬'],['chive','韭菜','g','生鲜','🌿'],['spinach','菠菜','g','生鲜','🥬'],['pumpkin','南瓜','g','生鲜','🎃'],['wood-ear','干木耳','g','生鲜','🍄'],['century-egg','皮蛋','个','生鲜','🥚'],['ready-tofu','即食豆腐','g','生鲜','◻'],['shrimp','带壳鲜虾','g','生鲜','🦐'],['bass','整条鲈鱼','g','生鲜','🐟'],['corn','鲜玉米','g','生鲜','🌽'],['carrot','胡萝卜','g','生鲜','🥕'],['cooked-rice','熟米饭','g','生鲜','🍚'],['noodles','干面条','g','生鲜','🍜'],['leek','大葱','g','生鲜','🌱'],['peanut','熟花生','g','生鲜','🥜'],['dry-chili','干辣椒','g','调味','🌶'],['oyster','蚝油','ml','调味','◦'],['beanpaste','郫县豆瓣酱','g','调味','◦'],['peppercorn','花椒','g','调味','◦'],['sesameoil','香油','ml','调味','◦'],['seaweed','干紫菜','g','生鲜','🌿'],['cola','可乐','ml','生鲜','🥤'],['fishsoy','蒸鱼豉油','ml','调味','◦'],
   ['zucchini','西葫芦','g','生鲜','🥒'],['garlic-scape','蒜苔','g','生鲜','🌿'],
 ].map(([id,name,unit,category,icon]) => [id, {id,name,unit,category,icon}])) as Record<string, Ingredient>;
 export const DEFAULT_PANTRY = ['salt', 'oil', 'soy', 'darksoy', 'sugar', 'wine', 'vinegar', 'starch'];
-export const RECIPES: Recipe[] = [
+export type Recipe=RecipeDefinition&{dishId:string;variantName:string;revision:string};
+export type Dish={id:string;name:string;aliases:string[];category:RecipeCategory;defaultRecipeId:string};
+const BASE_RECIPES:RecipeDefinition[] = [
  {id:'braised-pork',category:'荤菜',name:'红烧肉',aliases:['红烧肉','红烧五花肉'],tag:'浓油赤酱',intro:'小火慢炖，把平常的一餐做得有滋有味。',image:'pork',color:'#eee2d3',ingredients:[{id:'pork',amount:400},{id:'ginger',amount:10},{id:'scallion',amount:10},{id:'sugar',amount:15},{id:'soy',amount:20},{id:'darksoy',amount:8},{id:'wine',amount:15},{id:'oil',amount:10}],steps:[
   {title:'五花肉焯水',detail:'五花肉切约 3 厘米方块，冷水放入炖锅，加一半姜和料酒。煮沸撇去浮沫，捞出沥干；清洗炖锅。',minutes:7,burner:true,equipment:'炖锅'},
   {title:'炒糖色，给肉上色',detail:'炖锅加油和白糖，小火炒至琥珀色。轻放沥干的肉块，翻炒上色，加入生抽、老抽、葱结和剩余姜。留意热油飞溅。',minutes:6,burner:true,equipment:'炖锅'},
@@ -35,6 +38,11 @@ export const RECIPES: Recipe[] = [
  {id:'tofu',category:'蛋豆',name:'家常豆腐',aliases:['家常豆腐','红烧豆腐'],tag:'温柔下饭',intro:'豆腐吸足酱汁，简单也有好滋味。',image:'tofu',color:'#eee4d0',ingredients:[{id:'tofu',amount:400},{id:'garlic',amount:10},{id:'scallion',amount:5},{id:'soy',amount:15},{id:'darksoy',amount:5},{id:'oil',amount:12},{id:'salt',amount:2},{id:'starch',amount:5}],steps:[{title:'煮一锅家常豆腐',detail:'豆腐切块。炒锅热油，下蒜末炒香，加入豆腐、生抽、老抽与少量热水，小火煮至充分加热。',minutes:8,burner:true,equipment:'炒锅'},{title:'薄芡收汁',detail:'淀粉用少量冷水调匀，缓慢淋入锅内，轻推豆腐。煮开后加盐、撒葱花，关火装盘。',minutes:3,burner:true,equipment:'炒锅'}],tips:['轻推豆腐，尽量保持完整。']},
  ...LIBRARY_RECIPES,...WEB_RECIPES
 ];
+export const DEFAULT_RECIPES:Recipe[]=BASE_RECIPES.map(r=>({...r,dishId:r.id,variantName:DEFAULT_VARIANT_NAMES[r.id]||'家常版',revision:'1'}));
+export const DISHES:Dish[]=DEFAULT_RECIPES.map(r=>({id:r.dishId,name:r.name,aliases:[...r.aliases],category:r.category,defaultRecipeId:r.id}));
+export const RECIPES:Recipe[]=[...DEFAULT_RECIPES,...VARIANT_RECIPES];
+export const recipesForDish=(dishId:string)=>RECIPES.filter(r=>r.dishId===dishId);
+export const recipeLabel=(recipe:Recipe)=>`${recipe.name} · ${recipe.variantName}`;
 export type ReferencePack = {id:string; ingredientId:string; amount:number; referencePrice:number};
 /** Internal planning assumptions only: no store, stock, delivery or checkout capability. */
 const REFERENCE_PACKS: Record<string,[number,number][]> = {
@@ -48,3 +56,5 @@ export const equipmentFor=(recipes:Recipe[])=>[...new Set(recipes.flatMap(r=>r.s
 
 /** Scale only the documented soup-water ranges; temperature, thickness and timers are not ingredient quantities. */
 export function stepDetailFor(detail:string,servings:number){return detail.replace(/(700)–(900)ml|(1000)–(1300)ml/g,(_m,a,b,c,d)=>`${Math.round(Number(a||c)*servings/2)}–${Math.round(Number(b||d)*servings/2)}ml`).replace(/按 2 人基准/g,`按 ${servings} 人份`);}
+
+export function findDishes(query:string,category:RecipeCategory|'全部'='全部'):Dish[]{const matching=new Set(findRecipes(query,category).map(r=>r.dishId));return DISHES.filter(d=>matching.has(d.id));}

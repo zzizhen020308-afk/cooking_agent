@@ -1,4 +1,4 @@
-import type {Recipe} from './catalog.ts';
+import type {RecipeDefinition as Recipe} from './catalog.ts';
 
 /** Hand-edited two-person recipes. The source snapshot and adaptation notes are kept with each entry. */
 export const LIBRARY_RECIPES:Recipe[]=[
