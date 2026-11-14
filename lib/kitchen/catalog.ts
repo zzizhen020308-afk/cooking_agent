@@ -14,7 +14,18 @@ export const INGREDIENTS: Record<string, Ingredient> = Object.fromEntries([
   ['zucchini','西葫芦','g','生鲜','🥒'],['garlic-scape','蒜苔','g','生鲜','🌿'],
 ].map(([id,name,unit,category,icon]) => [id, {id,name,unit,category,icon}])) as Record<string, Ingredient>;
 export const DEFAULT_PANTRY = ['salt', 'oil', 'soy', 'darksoy', 'sugar', 'wine', 'vinegar', 'starch'];
-export type Recipe=RecipeDefinition&{dishId:string;variantName:string;revision:string};
+export type Recipe=RecipeDefinition&{dishId:string;variantName:string;revision:string;ingredientDefinitions?:Record<string,Ingredient>};
+/** Imported ingredient definitions stay inside the chosen recipe, never in the global catalog. */
+export function ingredientsFor(recipes:Recipe[]=[]):Record<string,Ingredient>{
+ const result:Record<string,Ingredient>=Object.assign(Object.create(null),INGREDIENTS);
+ for(const recipe of recipes)for(const [id,definition]of Object.entries(recipe.ingredientDefinitions||{})){
+  const previous=result[id];
+  if(previous&&['name','unit'].some(key=>previous[key as keyof Ingredient]!==definition[key as keyof Ingredient]))throw new Error('同名食材的单位或定义不一致，请重新核对导入菜谱。');
+  if(!previous)result[id]=definition;
+ }
+ return result;
+}
+export function ingredientFor(id:string,recipes:Recipe[]=[]):Ingredient|undefined{return ingredientsFor(recipes)[id];}
 export type Dish={id:string;name:string;aliases:string[];category:RecipeCategory;defaultRecipeId:string};
 const BASE_RECIPES:RecipeDefinition[] = [
  {id:'braised-pork',category:'荤菜',name:'红烧肉',aliases:['红烧肉','红烧五花肉'],tag:'浓油赤酱',intro:'小火慢炖，把平常的一餐做得有滋有味。',image:'pork',color:'#eee2d3',ingredients:[{id:'pork',amount:400},{id:'ginger',amount:10},{id:'scallion',amount:10},{id:'sugar',amount:15},{id:'soy',amount:20},{id:'darksoy',amount:8},{id:'wine',amount:15},{id:'oil',amount:10}],steps:[
