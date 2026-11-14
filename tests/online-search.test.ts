@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parsePastedRecipe,parseXiachufangHtml} from '../lib/kitchen/online-parser.ts';
+import {parsePastedRecipe,parseXiachufangHtml,cleanXiachufangTitle} from '../lib/kitchen/online-parser.ts';
 import {normalizeXiachufangRecipeUrl,searchXiachufang,fetchXiachufangRecipe,type OnlineSearchOptions} from '../lib/kitchen/online-search.ts';
 const synthetic='小炒南瓜\n作者：测试厨房\n用料\n南瓜 300克\n食用油 10毫升\n盐 适量\n做法步骤\n步骤 1\n南瓜切片，备好用料。\n步骤 2\n锅内倒油，翻炒至熟。\n小贴士\n这是测试数据，不是实际菜谱。';
 const now=1800000000000;
@@ -60,5 +60,19 @@ test('streamed upstream responses are bounded even without content-length',async
 });
 test('Tavily returns at most three source pages, never promotes summaries or captcha content into recipes',async()=>{
  const rows=[{title:'验证',url:'https://m.xiachufang.com/recipe/12345678/',raw_content:'验证码 安全验证'},...[23456789,34567890,45678901,56789012].map(id=>({title:'测试候选'+id,url:`https://m.xiachufang.com/recipe/${id}/`,content:synthetic,raw_content:null}))];
- const result=await searchXiachufang('测试候选菜',{apiKey:'hidden-key',fetcher:fetcher(()=>new Response(JSON.stringify({results:rows})))});assert.equal(result.status,'ok');assert.equal(result.candidates.length,3);for(const candidate of result.candidates){assert.deepEqual(candidate.ingredients,[]);assert.deepEqual(candidate.steps,[]);assert.equal(candidate.retrieval,'search-index');}assert.ok(!JSON.stringify(result).includes('hidden-key'));
+ const result=await searchXiachufang('测试候选菜',{apiKey:'hidden-key',fetcher:fetcher(()=>new Response(JSON.stringify({results:rows})))});assert.equal(result.status,'ok');assert.equal(result.candidates.length,3);for(const candidate of result.candidates){assert.deepEqual(candidate.ingredients,[]);assert.deepEqual(candidate.steps,[]);assert.equal(candidate.retrieval,'search-index');assert.equal(candidate.contentState,'link-only');}assert.match(result.message,/未返回菜谱正文/);assert.ok(!JSON.stringify(result).includes('hidden-key'));
+});
+test('observed live title decorations are removed without fabricating missing recipe content',async()=>{
+ const titles=['莴笋炒肉的做法步骤_菜谱 - 下厨房','【步骤图】莴笋炒肉的做法- 家常菜 - 下厨房','简单又下饭的莴笋炒肉丝的做法步骤 - 下厨房'];
+ assert.deepEqual(titles.map(cleanXiachufangTitle),['莴笋炒肉','莴笋炒肉','简单又下饭的莴笋炒肉丝']);
+ const result=await searchXiachufang('莴笋炒肉',{apiKey:'test-secret',fetcher:fetcher(()=>new Response(JSON.stringify({results:titles.map((title,i)=>({title,url:`https://m.xiachufang.com/recipe/${107742458+i}/`,raw_content:null,content:'搜索摘要，不是用料与步骤正文。'}))})))});
+ assert.equal(result.status,'ok');assert.equal(result.candidates.length,3);for(const candidate of result.candidates){assert.equal(candidate.contentState,'link-only');assert.deepEqual(candidate.ingredients,[]);assert.deepEqual(candidate.steps,[]);assert.equal(candidate.author,undefined);}assert.match(result.message,/暂不能据此生成食材清单和烹饪安排/);
+});
+test('candidate content states distinguish field availability from reviewed cooking plans',async()=>{
+ const rows=[{title:'测试南瓜的做法_下厨房',raw_content:synthetic},{title:'用料部分的做法_下厨房',raw_content:'测试用料\n用料\n土豆 200克'},{title:'步骤部分的做法_下厨房',raw_content:'测试步骤\n做法\n1. 切片。\n2. 炒熟。'}].map((row,i)=>({...row,url:`https://m.xiachufang.com/recipe/${22345678+i}/`}));
+ const result=await searchXiachufang('测试菜谱',{apiKey:'test-secret',fetcher:fetcher(()=>new Response(JSON.stringify({results:rows})))});
+ assert.deepEqual(result.candidates.map(c=>c.contentState),['complete','partial','partial']);
+ assert.equal(result.candidates[0].ingredients[2].quantityText,'适量');assert.equal(typeof result.candidates[0].steps[0],'string');assert.equal('minutes' in result.candidates[0],false);
+ const direct=await fetchXiachufangRecipe('https://m.xiachufang.com/recipe/12345678/',{fetcher:fetcher(()=>new Response('<h1>仅用料</h1><table><tr><td>土豆</td><td>200克</td></tr></table>'))});
+ assert.equal(direct.candidates[0].contentState,'partial');assert.match(direct.message,/只读取到部分/);
 });

@@ -6,7 +6,7 @@ import type {PlannedRecipe} from '@/lib/kitchen/snapshots';
 import {parsePastedRecipe} from '@/lib/kitchen/online-parser';
 import {parseIngredientQuantity,recipeFromDraft,xiachufangRecipeUrl,type DraftIngredient,type DraftRecipe,type DraftStep} from '@/lib/kitchen/import-recipe';
 
-type Candidate={id:string;title:string;url:string;author?:string;ingredients:{name:string;quantityText:string}[];steps:string[];retrievedAt:string;servingsText?:string;retrieval:'direct'|'search-index'|'pasted'};
+type Candidate={id:string;title:string;url:string;author?:string;ingredients:{name:string;quantityText:string}[];steps:string[];retrievedAt:string;servingsText?:string;retrieval:'direct'|'search-index'|'pasted';contentState?:'link-only'|'partial'|'complete'};
 type SearchResponse={status:'ok'|'not_configured'|'restricted'|'unavailable';candidates:Candidate[];searchUrl:string;message:string};
 const emptyIngredient=():DraftIngredient=>({name:'',amount:'',unit:'g',category:'生鲜'});
 const emptyStep=(index=0):DraftStep=>({title:`第 ${index+1} 步`,detail:'',minutes:'',equipment:'none',mode:'active'});
@@ -54,7 +54,7 @@ export function OnlineRecipes({initialQuery,onImport,onClose}:{initialQuery:stri
   <div className="online-search-row"><label className="sr-only" htmlFor="online-query">在线搜索菜名</label><input id="online-query" value={query} onChange={e=>setQuery(e.target.value)} maxLength={60} placeholder="例如：莴笋炒肉"/><button className="primary" disabled={Boolean(busy)} onClick={()=>requestSearch('search',query)}><Search size={15}/>{busy==='search'?'正在查找…':'搜索下厨房'}</button></div>
   {result&&<div className={`online-status ${result.status==='ok'?'success':''}`} role="status"><BookOpen size={16}/><p>{result.message}</p></div>}
   <a className="text-button online-source-link" href={searchLink(query)} target="_blank" rel="noopener noreferrer">在下厨房查看搜索结果<ArrowUpRight size={13}/></a>
-  {result?.candidates.map(candidate=><article className="online-candidate" key={candidate.id}><div><h3>{candidate.title}</h3><p>{candidate.author?`作者 ${candidate.author}`:'作者尚待核对'} · {candidate.ingredients.length} 项食材 · {candidate.steps.length} 步{candidate.retrieval==='search-index'?' · 搜索索引内容':''}</p></div><div className="online-candidate-actions"><a href={xiachufangRecipeUrl(candidate.url)!} target="_blank" rel="noopener noreferrer">查看原菜谱<ArrowUpRight size={12}/></a><button className="secondary" onClick={()=>chooseCandidate(candidate)}>核对并整理</button></div></article>)}
+  {result?.candidates.map(candidate=>{const complete=candidate.ingredients.length>0&&candidate.steps.length>0,hasFields=candidate.ingredients.length>0||candidate.steps.length>0;return <article className="online-candidate" key={candidate.id}><div><h3>{candidate.title}</h3><p>{candidate.author?`作者 ${candidate.author}`:'作者尚待核对'} · {complete?'已读取用料和步骤，仍需核对':hasFields?'只取得部分内容':'仅找到来源链接'}</p>{!complete&&<p className="online-review-note">{hasFields?'缺少完整用料或步骤':'未取得菜谱正文'}，暂不能据此生成食材清单和烹饪安排。可查看原文后手动导入。</p>}</div><div className="online-candidate-actions"><a href={xiachufangRecipeUrl(candidate.url)!} target="_blank" rel="noopener noreferrer">查看原菜谱<ArrowUpRight size={12}/></a><button className="secondary" onClick={()=>chooseCandidate(candidate)}>{complete?'核对并整理':'手动整理这份来源'}</button></div></article>;})}
   <button className="text-button online-manual-toggle" onClick={()=>{setManual(v=>!v);setError('');}}>{manual?'收起手动导入':'已有原菜谱？粘贴链接或食材导入'}</button>
   {manual&&<div className="online-manual">
    <h3>保留原页，整理这一份做法</h3>

@@ -96,7 +96,7 @@ npm run build
 
 输入菜单时先匹配内置和本机导入库，只有未知的完整菜名进入搜索。采用 [Tavily Search API](https://docs.tavily.com/documentation/api-reference/endpoint/search)，固定下厨房域名，最多三份候选，保留原页、作者（可待核对）、获取方式及时间。搜索摘要不被当成完整菜谱。没有 API key 时明确显示尚未配置，不返回模拟搜索结果。
 
-生产环境通过 Sites 的运行时环境变量设置 `TAVILY_API_KEY`，标记为 secret，再部署保存的版本以应用环境修订。不要写入源码、聊天、浏览器表单、`NEXT_PUBLIC_*` 或 hosting.json。本地测试可用未跟踪的 `.env` / `.dev.vars`，参见 `.env.example`。Worker 入口将服务端密钥传入当前请求上下文，浏览器不会接收密钥。未配置真实 key，因此本轮只验证了 provider 契约与错误处理，未验证付费服务真实端到端检索。
+生产环境通过 Sites 的运行时环境变量设置 `TAVILY_API_KEY`，标记为 secret，再部署保存的版本以应用环境修订。不要写入源码、聊天、浏览器表单、`NEXT_PUBLIC_*` 或 hosting.json。本地测试可用未跟踪的 `.env` / `.dev.vars`，参见 `.env.example`。Worker 入口将服务端密钥传入当前请求上下文，浏览器不会接收密钥。2026-11-14 已安全配置服务端 Secret 并验证真实搜索：莴笋炒肉返回三份来源链接，但三份 raw_content 均为空；首份的 Tavily Extract 返回 Failed to fetch url。因此真实搜索阶段通过，自动提取及其后的完整排程验收尚未通过。候选以 link-only/partial/complete 标明内容取得状态；complete 也仍需用户核对，并不表示自动校验配方。
 
 下厨房公开页目前可能返回验证码。链接读取遇到验证码、403、429 或重定向会停止，显示原因；不绕过验证。用户可在原站查看，再粘贴用料和步骤到本机解析。粘贴正文不会上传。联网检索会把所查菜名发送给 Tavily，读取原链接会请求下厨房。
 

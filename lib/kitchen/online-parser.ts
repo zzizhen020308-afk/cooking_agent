@@ -1,10 +1,20 @@
 /** Read facts from public recipe markup or text supplied by the visitor.
  * These are unreviewed source fields, never an executable cooking plan. */
 export type RawRecipeFields={title:string;author?:string;ingredients:{name:string;quantityText:string}[];steps:string[];servingsText?:string};
+/** Field availability only; “complete” does not mean quantities or timing were reviewed. */
+export type RecipeContentState='link-only'|'complete'|'partial';
+export function recipeContentState(recipe:Pick<RawRecipeFields,'ingredients'|'steps'>):RecipeContentState{
+ const ingredients=recipe.ingredients.length>0,steps=recipe.steps.length>0;
+ return ingredients&&steps?'complete':ingredients||steps?'partial':'link-only';
+}
 const MAX_TEXT=60000;
 const entities:Record<string,string>={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' '};
 export function decodeRecipeText(value:string):string{return value.replace(/&#(x[0-9a-f]+|\d+);|&([a-z]+);/gi,(whole,code,name)=>{if(name)return entities[name.toLowerCase()]??whole;const n=code[0].toLowerCase()==='x'?parseInt(code.slice(1),16):Number(code);return n>0&&n<=0x10ffff?String.fromCodePoint(n):'';});}
 function clean(value:string):string{return decodeRecipeText(value.replace(/<[^>]*>/g,' ').replace(/!\[[^\]]*\]\([^)]*\)/g,'').replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')).replace(/[\t \u00a0]+/g,' ').trim();}
+/** Search-result titles contain SEO decorations that are not part of the recipe name. */
+export function cleanXiachufangTitle(value:string):string{
+ return clean(value).replace(/【步骤图】|〖步骤图〗/g,'').replace(/的做法(?:步骤)?[\s\S]*$/,'').replace(/\s*[_-]\s*(?:菜谱\s*[_-]\s*)?下厨房\s*$/,'').trim().slice(0,120);
+}
 function splitIngredient(value:string):{name:string;quantityText:string}|null{
  const text=clean(value).replace(/^[-*•]\s*/, '').trim();if(!text||/^#/.test(text)||text.length>160)return null;
  if(text.startsWith('|')){const cells=text.split('|').map(s=>s.trim()).filter(Boolean);if(cells.length!==2||cells.every(s=>/^:?-{2,}:?$/.test(s))||/^(?:用料|食材|材料|配料|名称)$/.test(cells[0]))return null;return {name:cells[0],quantityText:cells[1]};}
