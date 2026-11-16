@@ -5,7 +5,27 @@ export type Evidence={label:string;url?:string;note?:string};
 export const CONTENT_VERSION='2026.11.12';
 const github='https://github.com/Anduin2017/HowToCook/blob/master/';
 const hoc=(path:string)=>github+encodeURI(path);
-export type RecipeSource={kind:'edited'|'original';label:string;checkedAt:string;note:string;references:Evidence[];snapshot?:string;platform?:'HowToCook'|'下厨房';author?:string;sourceTitle?:string};
+export type RecipeSource={kind:'edited'|'original';label:string;checkedAt:string;note:string;references:Evidence[];snapshot?:string;platform?:'HowToCook'|'下厨房';author?:string;sourceTitle?:string;license?:'Unlicense';retrievedAt?:string};
+/** Only immutable Markdown recipes in the upstream HowToCook dishes directory. */
+export function normalizeHowToCookRecipeUrl(raw:unknown):string|null{
+ if(typeof raw!=='string'||raw.length>1200||raw.includes('\\'))return null;
+ try{
+  const u=new URL(raw);
+  if(u.protocol!=='https:'||u.hostname!=='github.com'||u.username||u.password||u.port||u.search||u.hash)return null;
+  if(/%2f|%5c/i.test(u.pathname))return null;
+  const decoded=decodeURIComponent(u.pathname);
+  if(/[\x00-\x1f%\\]/.test(decoded))return null;
+  const match=decoded.match(/^\/Anduin2017\/HowToCook\/blob\/([a-f0-9]{40})\/(dishes\/.+\.md)$/);
+  if(!match||match[2].split('/').some(p=>!p||p==='.'||p==='..'))return null;
+  return `https://github.com/Anduin2017/HowToCook/blob/${match[1]}/${match[2].split('/').map(encodeURIComponent).join('/')}`;
+ }catch{return null;}
+}
+export function howToCookSourceIdentity(raw:unknown):{snapshot:string;path:string;id:string}|null{
+ const url=normalizeHowToCookRecipeUrl(raw);if(!url)return null;
+ const parts=new URL(url).pathname.split('/'),path=decodeURIComponent(parts.slice(5).join('/'));
+ let a=2166136261,b=2246822519;for(const ch of path){const code=ch.codePointAt(0)!;a=Math.imul(a^code,16777619);b=Math.imul(b^code,3266489917);}
+ return {snapshot:parts[4],path,id:'online-hoc-'+(a>>>0).toString(16).padStart(8,'0')+(b>>>0).toString(16).padStart(8,'0')};
+}
 const edited=(path:string,note:string):RecipeSource=>({kind:'edited',label:'掌勺整理版 · 技法参考 HowToCook',checkedAt:'2026-11-10',note,references:[{label:'查看参考做法 · HowToCook',url:hoc(path)}]});
 export const RECIPE_SOURCES:Record<string,RecipeSource>={
  'braised-pork':edited('dishes/meat_dish/红烧肉/简易红烧肉.md','参考焯水、上色、补热水慢炖与收汁方法。本餐为 2 人基准整理配方，份量、调味和时间采用掌勺版本，不照搬原文的大份量。'),

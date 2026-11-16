@@ -4,7 +4,7 @@ import {WEB_RECIPES} from './web-recipes.ts';
 /** Two-person edited recipes. References and adaptation notes are recorded in sources.ts. */
 export type Ingredient = { id: string; name: string; unit: 'g' | 'ml' | '个'; category: '生鲜' | '调味'; icon: string };
 export type Requirement = { id: string; amount: number };
-export type RecipeStep = { title: string; detail: string; minutes: number; passive?: boolean; waitKind?:'炖煮'|'蒸制'|'泡发'|'腌制'; burner?: boolean; equipment?: '汤锅' | '炖锅' | '炒锅' | '蒸锅' };
+export type RecipeStep = { title: string; detail: string; minutes: number; timingBasis?:'source'|'estimated'; passive?: boolean; waitKind?:'炖煮'|'蒸制'|'泡发'|'腌制'; burner?: boolean; equipment?: '汤锅' | '炖锅' | '炒锅' | '蒸锅' };
 export const RECIPE_CATEGORIES=['荤菜','水产','蔬菜','蛋豆','汤羹','主食','凉菜'] as const;
 export type RecipeCategory=typeof RECIPE_CATEGORIES[number];
 export type RecipeDefinition = { id: string; name: string; aliases: string[]; category:RecipeCategory; tag: string; intro: string; image: string; color: string; ingredients: Requirement[]; steps: RecipeStep[]; tips: string[]; };
