@@ -1,5 +1,5 @@
 import {DISHES,INGREDIENTS,RECIPE_CATEGORIES,ingredientsFor,type Recipe,type Ingredient} from './catalog.ts';
-import {RECIPE_SOURCES,howToCookSourceIdentity,type RecipeSource} from './sources.ts';
+import {RECIPE_SOURCES,howToCookSourceIdentity,wikibooksSourceIdentity,normalizeWikibooksRecipeUrl,wikibooksHistoryUrl,WIKIBOOKS_RECIPE_LICENSE_URL,type RecipeSource} from './sources.ts';
 
 export type PlannedRecipe=Recipe&{source:RecipeSource};
 const copy=<T>(value:T):T=>JSON.parse(JSON.stringify(value));
@@ -31,7 +31,7 @@ export function validateRecipeSnapshots(raw:unknown,max=24):PlannedRecipe[]{
   if(known&&Object.keys(definitions).length)throw new Error('本地菜谱不能覆盖食材定义。');
   if(!Array.isArray(r.ingredients)||!r.ingredients.length||r.ingredients.length>40||new Set(r.ingredients.map(i=>i?.id)).size!==r.ingredients.length||r.ingredients.some(i=>!i||!(Object.hasOwn(INGREDIENTS,i.id)||Object.hasOwn(definitions,i.id))||!Number.isFinite(i.amount)||i.amount<=0||i.amount>10000))throw new Error('保存的食材用量有误，请重新安排菜单。');
   if(!Array.isArray(r.steps)||!r.steps.length||r.steps.length>20||r.steps.some(step=>!step||!text(step.title,160)||!text(step.detail)||!Number.isInteger(step.minutes)||step.minutes<1||step.minutes>180||(step.timingBasis!==undefined&&!['source','estimated'].includes(step.timingBasis))||(step.equipment!==undefined&&!['汤锅','炖锅','炒锅','蒸锅'].includes(step.equipment))||(step.waitKind!==undefined&&!['炖煮','蒸制','泡发','腌制'].includes(step.waitKind))||(step.burner!==undefined&&typeof step.burner!=='boolean')||(step.passive!==undefined&&typeof step.passive!=='boolean')||(step.burner&&!step.equipment)))throw new Error('保存的烹饪步骤有误，请重新安排菜单。');
-  if(!s||(s.snapshot!==undefined&&(!text(s.snapshot,40)||!/^[a-f0-9]{40}$/.test(s.snapshot)))||(s.platform!==undefined&&!['HowToCook','下厨房'].includes(s.platform))||(s.author!==undefined&&!text(s.author,200))||(s.sourceTitle!==undefined&&!text(s.sourceTitle,200))||(s.license!==undefined&&(s.license!=='Unlicense'||s.platform!=='HowToCook'))||(s.retrievedAt!==undefined&&(!text(s.retrievedAt,40)||!/^\d{4}-\d{2}-\d{2}T/.test(s.retrievedAt)||!Number.isFinite(Date.parse(s.retrievedAt))))||!['edited','original'].includes(s.kind)||!text(s.label)||!text(s.note)||!text(s.checkedAt,10)||!/^\d{4}-\d{2}-\d{2}$/.test(s.checkedAt)||!Array.isArray(s.references)||s.references.length>10||s.references.some(e=>!e||!text(e.label)||(e.note!==undefined&&!text(e.note))||(e.url!==undefined&&(!text(e.url)||!/^https:\/\//.test(e.url)))))throw new Error('保存的菜谱来源有误，请重新安排菜单。');
+  if(!s||(s.snapshot!==undefined&&(!text(s.snapshot,40)||!/^[a-f0-9]{40}$/.test(s.snapshot)))||(s.platform!==undefined&&!['HowToCook','下厨房','维基教科书'].includes(s.platform))||(s.author!==undefined&&!text(s.author,200))||(s.sourceTitle!==undefined&&!text(s.sourceTitle,200))||(s.license!==undefined&&!((s.license==='Unlicense'&&s.platform==='HowToCook')||(s.license==='CC BY-SA 4.0'&&s.platform==='维基教科书')))||(s.sourceRevision!==undefined&&(s.platform!=='维基教科书'||!text(s.sourceRevision,20)||!/^[1-9]\d{0,19}$/.test(s.sourceRevision)))||(s.retrievedAt!==undefined&&(!text(s.retrievedAt,40)||!/^\d{4}-\d{2}-\d{2}T/.test(s.retrievedAt)||!Number.isFinite(Date.parse(s.retrievedAt))))||!['edited','original'].includes(s.kind)||!text(s.label)||!text(s.note)||!text(s.checkedAt,10)||!/^\d{4}-\d{2}-\d{2}$/.test(s.checkedAt)||!Array.isArray(s.references)||s.references.length>10||s.references.some(e=>!e||!text(e.label)||(e.note!==undefined&&!text(e.note))||(e.url!==undefined&&(!text(e.url)||!/^https:\/\//.test(e.url)))))throw new Error('保存的菜谱来源有误，请重新安排菜单。');
   if(!known){
    if(s.platform==='下厨房'){
     if(!s.references.some(e=>isXiachufangRecipeUrl(e.url))||s.references.some(e=>e.url!==undefined&&!isXiachufangRecipeUrl(e.url)))throw new Error('导入菜谱需要有效的下厨房原页来源。');
@@ -39,6 +39,12 @@ export function validateRecipeSnapshots(raw:unknown,max=24):PlannedRecipe[]{
     const urls=s.references.flatMap(e=>e.url?[e.url]:[]),references=urls.map(e=>howToCookSourceIdentity(e));
     const licenseUrl=`https://github.com/Anduin2017/HowToCook/blob/${s.snapshot}/LICENSE`;
     if(!references.some(e=>e?.snapshot===s.snapshot)||urls.some((url,i)=>url!==licenseUrl&&references[i]?.snapshot!==s.snapshot)||s.license!=='Unlicense'||!s.retrievedAt)throw new Error('导入 HowToCook 菜谱需要固定版本原页、许可与读取时间。');
+   }else if(s.platform==='维基教科书'){
+    const urls=s.references.flatMap(e=>e.url?[e.url]:[]),identity=urls.map(wikibooksSourceIdentity).find(e=>e?.revision===s.sourceRevision);
+    const primary=identity?normalizeWikibooksRecipeUrl(urls.find(url=>wikibooksSourceIdentity(url)?.revision===s.sourceRevision)):null;
+    const history=identity?wikibooksHistoryUrl(identity.title):null;
+    const allowed=new Set([primary,history,WIKIBOOKS_RECIPE_LICENSE_URL]);
+    if(!identity||r.id!==identity.id||r.dishId!==identity.id||s.snapshot!==undefined||s.license!=='CC BY-SA 4.0'||!s.retrievedAt||!text(s.author,200)||!primary||!history||!urls.includes(primary)||!urls.includes(history)||!urls.includes(WIKIBOOKS_RECIPE_LICENSE_URL)||urls.some(url=>!allowed.has(url)))throw new Error('导入维基教科书菜谱需要固定修订原页、该页历史、贡献者和相同方式共享许可。');
    }else throw new Error('导入菜谱需要有效的已支持来源。');
   }
  }

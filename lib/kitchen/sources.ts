@@ -5,7 +5,38 @@ export type Evidence={label:string;url?:string;note?:string};
 export const CONTENT_VERSION='2026.11.12';
 const github='https://github.com/Anduin2017/HowToCook/blob/master/';
 const hoc=(path:string)=>github+encodeURI(path);
-export type RecipeSource={kind:'edited'|'original';label:string;checkedAt:string;note:string;references:Evidence[];snapshot?:string;platform?:'HowToCook'|'下厨房';author?:string;sourceTitle?:string;license?:'Unlicense';retrievedAt?:string};
+export type RecipePlatform='HowToCook'|'下厨房'|'维基教科书';
+export type RecipeLicense='Unlicense'|'CC BY-SA 4.0';
+export type RecipeSource={kind:'edited'|'original';label:string;checkedAt:string;note:string;references:Evidence[];snapshot?:string;platform?:RecipePlatform;author?:string;sourceTitle?:string;license?:RecipeLicense;retrievedAt?:string;sourceRevision?:string;sourceLanguage?:'zh'|'en';translation?:string};
+export const WIKIBOOKS_RECIPE_LICENSE_URL='https://creativecommons.org/licenses/by-sa/4.0/';
+const sourceFingerprint=(value:string)=>{let a=2166136261,b=2246822519;for(const ch of value){const code=ch.codePointAt(0)!;a=Math.imul(a^code,16777619);b=Math.imul(b^code,3266489917);}return (a>>>0).toString(16).padStart(8,'0')+(b>>>0).toString(16).padStart(8,'0');};
+function normalizedWikibooksTitle(value:unknown,language:'zh'|'en'='zh'):string|null{
+ if(typeof value!=='string'||value.length>200||/[\x00-\x1f%\\#<>\[\]{}|?]/.test(value))return null;
+ const title=value.normalize('NFC');
+ if((language==='zh'?!/^(食谱|食譜)\/.+/.test(title):!/^Cookbook:.+/.test(title)||/^Cookbook:(?:Category|Template|File|User|Wikibooks|Help|Module|Special):/i.test(title))||title.trim()!==title||title.split('/').some(part=>!part||part==='.'||part==='..'))return null;
+ return title;
+}
+/** Recipe evidence is pinned to an explicit revision, never a mutable article URL. */
+export function normalizeWikibooksRecipeUrl(raw:unknown):string|null{
+ if(typeof raw!=='string'||raw.length>1800||/[\x00-\x1f\\]/.test(raw))return null;
+ try{
+  const u=new URL(raw);
+  if(u.protocol!=='https:'||!['zh.wikibooks.org','en.wikibooks.org'].includes(u.hostname)||u.username||u.password||u.port||u.hash||u.pathname!=='/w/index.php')return null;
+  if([...u.searchParams].length!==2||u.searchParams.getAll('title').length!==1||u.searchParams.getAll('oldid').length!==1)return null;
+  const language=u.hostname==='zh.wikibooks.org'?'zh':'en',title=normalizedWikibooksTitle(u.searchParams.get('title'),language),revision=u.searchParams.get('oldid');
+  if(!title||!revision||!/^[1-9]\d{0,19}$/.test(revision))return null;
+  return `https://${language}.wikibooks.org/w/index.php?title=${encodeURIComponent(title)}&oldid=${revision}`;
+ }catch{return null;}
+}
+export function wikibooksSourceIdentity(raw:unknown):{title:string;revision:string;id:string;language:'zh'|'en'}|null{
+ const url=normalizeWikibooksRecipeUrl(raw);if(!url)return null;
+ const u=new URL(url),params=u.searchParams,title=params.get('title')!,revision=params.get('oldid')!,language=u.hostname==='zh.wikibooks.org'?'zh':'en';
+ return {title,revision,id:'online-wb-'+language+'-'+sourceFingerprint(title),language};
+}
+export function wikibooksHistoryUrl(raw:string,language:'zh'|'en'='zh'):string|null{
+ if(!['zh','en'].includes(language))return null;
+ const title=normalizedWikibooksTitle(raw,language);return title?`https://${language}.wikibooks.org/w/index.php?title=${encodeURIComponent(title)}&action=history`:null;
+}
 /** Only immutable Markdown recipes in the upstream HowToCook dishes directory. */
 export function normalizeHowToCookRecipeUrl(raw:unknown):string|null{
  if(typeof raw!=='string'||raw.length>1200||raw.includes('\\'))return null;
@@ -23,8 +54,7 @@ export function normalizeHowToCookRecipeUrl(raw:unknown):string|null{
 export function howToCookSourceIdentity(raw:unknown):{snapshot:string;path:string;id:string}|null{
  const url=normalizeHowToCookRecipeUrl(raw);if(!url)return null;
  const parts=new URL(url).pathname.split('/'),path=decodeURIComponent(parts.slice(5).join('/'));
- let a=2166136261,b=2246822519;for(const ch of path){const code=ch.codePointAt(0)!;a=Math.imul(a^code,16777619);b=Math.imul(b^code,3266489917);}
- return {snapshot:parts[4],path,id:'online-hoc-'+(a>>>0).toString(16).padStart(8,'0')+(b>>>0).toString(16).padStart(8,'0')};
+ return {snapshot:parts[4],path,id:'online-hoc-'+sourceFingerprint(path)};
 }
 const edited=(path:string,note:string):RecipeSource=>({kind:'edited',label:'掌勺整理版 · 技法参考 HowToCook',checkedAt:'2026-11-10',note,references:[{label:'查看参考做法 · HowToCook',url:hoc(path)}]});
 export const RECIPE_SOURCES:Record<string,RecipeSource>={
