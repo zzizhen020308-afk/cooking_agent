@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {OPEN_RECIPE_SNAPSHOT,parseOpenRecipeIndex,parseOpenRecipeReadme,parseOpenRecipeMarkdown,planOpenRecipeStep,searchOpenRecipes,fetchOpenRecipe} from '../lib/kitchen/open-recipes.ts';
+import {OPEN_RECIPE_SNAPSHOT,parseOpenRecipeIndex,parseOpenRecipeReadme,parseOpenRecipeMarkdown,planOpenRecipeStep,searchOpenRecipes,fetchOpenRecipe,matchOpenRecipeNames,openRecipeIndexStats} from '../lib/kitchen/open-recipes.ts';
 
 // Facts from the pinned public-domain HowToCook recipe, not a generated replacement recipe.
 const path='dishes/meat_dish/蚂蚁上树.md';
@@ -85,4 +85,33 @@ test('oversized source, redirects and empty indices return errors instead of fab
  const tooLarge=await fetchOpenRecipe(url,{fetcher:mock(()=>new Response('x'.repeat(150001))),cache:false});assert.equal(tooLarge.status,'unavailable');assert.equal(tooLarge.candidates.length,0);
  const redirected=await fetchOpenRecipe(url,{fetcher:mock(()=>new Response(null,{status:302,headers:{location:'https://foreign.test'}})),cache:false});assert.equal(redirected.status,'unavailable');
  const noSource=await searchOpenRecipes('蚂蚁上树',{fetcher:mock(()=>new Response('not an index')),cache:false});assert.equal(noSource.status,'unavailable');assert.equal(noSource.candidates.length,0);
+});
+const beefPath='dishes/meat_dish/西红柿土豆炖牛肉/西红柿土豆炖牛肉.md';
+const beefNamePaths=[beefPath,'dishes/meat_dish/土豆炖排骨/土豆炖排骨.md','dishes/meat_dish/孜然牛肉.md','dishes/vegetable_dish/酸辣土豆丝.md',path,'dishes/vegetable_dish/蚂蚁上树加青菜.md'];
+test('related braised potato-beef names retain the actual tomato recipe and disclose its extra ingredient',()=>{
+ for(const query of ['土豆烧牛肉','土豆炖牛肉']){
+  const result=matchOpenRecipeNames(beefNamePaths,query);
+  assert.equal(result.length,1);assert.equal(result[0].path,beefPath);assert.equal(result[0].name,'西红柿土豆炖牛肉');assert.equal(result[0].matchType,'similar');
+  assert.match(result[0].matchNote||'',/相近做法/);assert.match(result[0].matchNote||'',/另含西红柿/);assert.ok(!result.some(x=>x.name.includes('排骨')));
+ }
+ const alias=matchOpenRecipeNames(beefNamePaths,'番茄土豆炖牛肉');assert.equal(alias[0].path,beefPath);assert.equal(alias[0].matchType,'partial');assert.match(alias[0].matchNote||'',/别名/);
+ assert.equal(matchOpenRecipeNames(beefNamePaths,'西红柿土豆炖牛肉')[0].matchType,'exact');
+});
+test('name expansion does not change cooking families or replace an unrecognized requested ingredient',()=>{
+ assert.deepEqual(matchOpenRecipeNames(beefNamePaths,'土豆蒸牛肉'),[]);
+ assert.deepEqual(matchOpenRecipeNames(beefNamePaths,'土豆烧鸡肉'),[]);
+ assert.deepEqual(matchOpenRecipeNames(beefNamePaths,'土豆烧牛肉不辣'),[]);
+ const potato=matchOpenRecipeNames(beefNamePaths,'土豆');assert.ok(potato.length>0);assert.ok(potato.every(r=>r.name.includes('土豆')&&r.matchType==='partial'));
+ const ants=matchOpenRecipeNames(beefNamePaths,'蚂蚁上树');assert.equal(ants[0].path,path);assert.equal(ants[0].matchType,'exact');assert.equal(ants[1].matchType,'partial');
+});
+test('index coverage counts files and categories without claiming all entries are automatically usable',()=>{
+ const stats=openRecipeIndexStats([...beefNamePaths,'dishes/drink/茶.md','dishes/template/示例.md',beefPath]);
+ assert.equal(stats.totalRecipeFiles,8);assert.equal(stats.uniqueTitles,8);assert.equal(stats.byCategory.meat_dish,4);assert.equal(stats.byCategory.vegetable_dish,2);assert.equal(stats.byCategory.drink,1);assert.equal(stats.templateFiles,1);assert.equal(stats.nonTemplateRecipeFiles,7);assert.equal(stats.snapshot,OPEN_RECIPE_SNAPSHOT);
+});
+test('runtime result carries computed coverage and matching provenance even when no title matches',async()=>{
+ const source=`# 西红柿土豆炖牛肉的做法\n## 计算\n一份正好够 2 个人吃。\n- 土豆 200g\n- 牛肉 300g\n- 西红柿 100g\n## 操作\n1. 按原谱处理食材\n2. 炖煮约 30 分钟\n`;
+ const fetcher=mock(request=>request.includes('/git/trees/')?Response.json({tree:beefNamePaths.map(path=>({type:'blob',path}))}):new Response(source));
+ const result=await searchOpenRecipes('土豆烧牛肉',{fetcher,cache:false});
+ assert.equal(result.status,'ok');assert.equal(result.candidates.length,1);assert.equal(result.candidates[0].title,'西红柿土豆炖牛肉');assert.equal(result.candidates[0].matchType,'similar');assert.match(result.candidates[0].matchNote||'',/另含西红柿/);assert.equal(result.indexStats?.totalRecipeFiles,6);assert.match(result.message,/未找到同名/);
+ const missing=await searchOpenRecipes('根本不存在的菜',{fetcher,cache:false});assert.equal(missing.status,'unavailable');assert.equal(missing.indexStats?.uniqueTitles,6);assert.match(missing.message,/并非这道菜不存在/);
 });

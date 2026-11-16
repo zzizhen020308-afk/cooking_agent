@@ -7,6 +7,7 @@ export type SourceRecipeCandidate={
  retrievedAt:string;servingsText?:string;retrieval:'direct'|'search-index'|'pasted';
  contentState?:'link-only'|'partial'|'complete';platform?:'HowToCook'|'下厨房';license?:'Unlicense';snapshot?:string;
  baseServings?:number;plannedSteps?:RecipeStep[];warnings?:string[];blockingIssues?:string[];notes?:string[];
+ matchType?:'exact'|'partial'|'similar';matchNote?:string;
 };
 
 function categoryFor(candidate:SourceRecipeCandidate):RecipeCategory{
@@ -41,6 +42,7 @@ export function sourceDraftFromCandidate(candidate:SourceRecipeCandidate,request
  const estimated=planned.filter(s=>s.timingBasis==='estimated').length;
  if(estimated)warnings.push(`${estimated} 步的耗时为排程估计，原谱没有明确分钟数；计时结束仍需按实际状态检查。`);
  if(candidate.steps.some(s=>/可选|可撒|可加入|可根据/.test(s))||candidate.notes?.some(s=>/可选|可撒|可加入/.test(s)))warnings.push('可选配料未计入定量清单；想添加时请修改用量补齐。');
- const draft:DraftRecipe={title:(requestedTitle?.trim()||candidate.title).slice(0,60),url:recipeSourceUrl(candidate.url)||'',author:candidate.author||'',sourceTitle:candidate.title,retrievedAt:candidate.retrievedAt,retrieval:candidate.retrieval,baseServings:String(servings),servingsBasis:knownServings?'source':'assumed',category:categoryFor(candidate),ingredients,steps:permitted?planned.map(draftStep):candidate.steps.map((_,i)=>({title:`第 ${i+1} 步`,detail:'',minutes:'',equipment:'none',mode:'active'})),sourceMode:permitted?'source':'manual',confirmed:false};
+ const similar=candidate.matchType==='similar';
+ const draft:DraftRecipe={title:(similar?candidate.title:requestedTitle?.trim()||candidate.title).slice(0,60),...(similar&&requestedTitle?.trim()?{requestedAlias:requestedTitle.trim().slice(0,60)}:{}),...(similar&&candidate.matchNote?{matchNote:candidate.matchNote}:{}),url:recipeSourceUrl(candidate.url)||'',author:candidate.author||'',sourceTitle:candidate.title,retrievedAt:candidate.retrievedAt,retrieval:candidate.retrieval,baseServings:String(servings),servingsBasis:knownServings?'source':'assumed',category:categoryFor(candidate),ingredients,steps:permitted?planned.map(draftStep):candidate.steps.map((_,i)=>({title:`第 ${i+1} 步`,detail:'',minutes:'',equipment:'none',mode:'active'})),sourceMode:permitted?'source':'manual',confirmed:false};
  return {draft,issues:[...new Set(issues)],warnings:[...new Set(warnings)]};
 }

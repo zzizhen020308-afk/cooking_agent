@@ -25,3 +25,12 @@ test('unlicensed or incomplete candidates cannot use the open-source automatic p
  const missing=candidate();missing.plannedSteps=[];assert.ok(sourceDraftFromCandidate(missing).issues.some(i=>i.includes('数量不一致')));
  const changed=candidate();changed.plannedSteps![0].detail='另一份做法';assert.ok(sourceDraftFromCandidate(changed).issues.some(i=>i.includes('内容或数量不一致')));
 });
+test('explicitly chosen similar recipes keep their actual source name while resolving the requested menu',()=>{
+ const c=candidate();c.matchType='similar';c.matchNote='相近做法，原谱另含郫县豆瓣酱，请核对。';
+ const prepared=sourceDraftFromCandidate(c,'粉丝烧肉');
+ assert.equal(prepared.draft.title,'蚂蚁上树');assert.equal(prepared.draft.sourceTitle,'蚂蚁上树');
+ const recipe=recipeFromDraft({...prepared.draft,confirmed:true});
+ assert.equal(recipe.name,'蚂蚁上树');assert.ok(recipe.aliases.includes('粉丝烧肉'));assert.match(recipe.source.note,/相近做法/);
+ const plan=createPlanWithImports({request:'粉丝烧肉、番茄炒蛋',servings:2,budget:10000,pantry:[],burners:2},[recipe]);
+ assert.equal(plan.recipes[0].name,'蚂蚁上树');assert.equal(plan.recipes[0].source.sourceTitle,'蚂蚁上树');
+});
