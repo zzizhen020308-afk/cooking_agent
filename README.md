@@ -53,6 +53,7 @@ npm run build
 - `lib/kitchen/sources.ts`：每道菜的来源、参考链接、改编说明、版本和答疑依据。
 - `lib/kitchen/engine.ts`：需求合并、购买建议、预算区间、灶台调度和计时更新。
 - `lib/kitchen/advisor.ts`：有限规则答疑，输出正文、澄清选项、依据和可选的结构化动作。
+- `scripts/generate-dish-art.mjs`：为 34 道内置菜各生成一张原创俯视插画，输出到 `public/food/dish/<dishId>.svg`；改图后运行 `node scripts/generate-dish-art.mjs` 重新生成。联网导入的菜仍使用 `public/food/` 下的通用插画。
 - `tests/`：份量、计划资源、完整单/双灶流程、问答范围、计时与动作校验。
 
 ## 例子

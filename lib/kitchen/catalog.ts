@@ -69,3 +69,5 @@ export const equipmentFor=(recipes:Recipe[])=>[...new Set(recipes.flatMap(r=>r.s
 export function stepDetailFor(detail:string,servings:number){return detail.replace(/(700)–(900)ml|(1000)–(1300)ml/g,(_m,a,b,c,d)=>`${Math.round(Number(a||c)*servings/2)}–${Math.round(Number(b||d)*servings/2)}ml`).replace(/按 2 人基准/g,`按 ${servings} 人份`);}
 
 export function findDishes(query:string,category:RecipeCategory|'全部'='全部'):Dish[]{const matching=new Set(findRecipes(query,category).map(r=>r.dishId));return DISHES.filter(d=>matching.has(d.id));}
+/** Built-in dishes have their own illustration; imported recipes fall back to the shared image key. */
+export const dishArt=(r:{dishId:string;image:string})=>DISHES.some(d=>d.id===r.dishId)?`/food/dish/${r.dishId}.svg`:`/food/${r.image}.svg`;
