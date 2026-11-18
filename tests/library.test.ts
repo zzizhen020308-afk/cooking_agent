@@ -31,7 +31,7 @@ test('each recipe has complete quantities, purchase assumptions, safe step metad
   assert.equal(new Set(r.ingredients.map(i=>i.id)).size,r.ingredients.length,r.name);
   for(const i of r.ingredients){assert.ok(INGREDIENTS[i.id],i.id);assert.ok(i.amount>0&&Number.isFinite(i.amount));assert.ok(referencePacks.some(p=>p.ingredientId===i.id));}
   for(const s of r.steps){assert.ok(Number.isInteger(s.minutes)&&s.minutes>0);assert.ok(s.title&&s.detail);if(s.burner)assert.ok(s.equipment);if(s.waitKind==='蒸制')assert.equal(s.equipment,'蒸锅');if(s.waitKind==='泡发'||s.waitKind==='腌制')assert.ok(!s.burner&&!s.equipment);}
-  assert.ok(existsSync(new URL(`../public/food/${r.image}.svg`,import.meta.url)));
+  assert.ok(existsSync(new URL(`../public/food/${r.image}.svg`,import.meta.url)));assert.ok(existsSync(new URL(`../public/food/dish/${r.dishId}.svg`,import.meta.url)),r.name);
  }
 });
 test('all added source links point to the verified immutable recipe snapshot',()=>{
