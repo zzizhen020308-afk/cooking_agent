@@ -73,3 +73,10 @@
 .prototype-note{background:#fdf3e3;border-color:#f1dcc0;color:#8a6a48}
 .roadmap-row.running .roadmap-node{background:var(--tomato);border-color:var(--tomato)}
 .progress-line>div{background:linear-gradient(90deg,var(--yolk),var(--tomato))}
+
+/* Timer alerts toggle in the cooking toolbar. */
+.cook-toolbar-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.alert-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;font-size:11px;background:var(--tomato);color:#fff7ea}
+.alert-chip:hover{background:var(--tomato-dark)}
+.alert-chip.on{background:var(--yolk-soft);color:#8a5a10}
+.alert-chip.on:hover{background:#f6e3a8}
